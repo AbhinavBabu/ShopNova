@@ -29,6 +29,7 @@ export default function Cart() {
         image: item.image,
       })),
       totalAmount: parseFloat(totalAmount.toFixed(2)),
+      userEmail: user?.email, // forwarded to notification-service
     };
 
     try {
