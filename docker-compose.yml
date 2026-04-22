@@ -5,23 +5,55 @@ networks:
     driver: bridge
 
 volumes:
-  mongo-data:
+  auth-db-data:
+  product-db-data:
+  order-db-data:
 
 services:
+
   # ─────────────────────────────────────────
-  # MongoDB
+  # auth-db  — dedicated MongoDB for auth-service
   # ─────────────────────────────────────────
-  mongodb:
+  auth-db:
     image: mongo:7
-    container_name: mongodb
+    container_name: auth-db
     restart: unless-stopped
-    ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: rootpassword
     volumes:
-      - mongo-data:/data/db
+      - auth-db-data:/data/db
+    networks:
+      - ecommerce-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────
+  # product-db  — dedicated MongoDB for product-service
+  # ─────────────────────────────────────────
+  product-db:
+    image: mongo:7
+    container_name: product-db
+    restart: unless-stopped
+    volumes:
+      - product-db-data:/data/db
+    networks:
+      - ecommerce-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────
+  # order-db  — dedicated MongoDB for order-service
+  # ─────────────────────────────────────────
+  order-db:
+    image: mongo:7
+    container_name: order-db
+    restart: unless-stopped
+    volumes:
+      - order-db-data:/data/db
     networks:
       - ecommerce-net
     healthcheck:
@@ -43,11 +75,11 @@ services:
       - "8001:8001"
     environment:
       PORT: 8001
-      MONGO_URI: mongodb://root:rootpassword@mongodb:27017/authdb?authSource=admin
+      AUTH_MONGO_URI: mongodb://auth-db:27017/authdb
       JWT_SECRET: supersecretjwtkey_change_in_production
       NODE_ENV: development
     depends_on:
-      mongodb:
+      auth-db:
         condition: service_healthy
     networks:
       - ecommerce-net
@@ -65,10 +97,10 @@ services:
       - "8002:8002"
     environment:
       PORT: 8002
-      MONGO_URI: mongodb://root:rootpassword@mongodb:27017/productdb?authSource=admin
+      PRODUCT_MONGO_URI: mongodb://product-db:27017/productdb
       NODE_ENV: development
     depends_on:
-      mongodb:
+      product-db:
         condition: service_healthy
     networks:
       - ecommerce-net
@@ -86,13 +118,13 @@ services:
       - "8003:8003"
     environment:
       PORT: 8003
-      MONGO_URI: mongodb://root:rootpassword@mongodb:27017/orderdb?authSource=admin
+      ORDER_MONGO_URI: mongodb://order-db:27017/orderdb
       JWT_SECRET: supersecretjwtkey_change_in_production
       NOTIFICATION_SERVICE_HOST: notification-service
       NOTIFICATION_SERVICE_PORT: 8004
       NODE_ENV: development
     depends_on:
-      mongodb:
+      order-db:
         condition: service_healthy
       notification-service:
         condition: service_started
@@ -118,7 +150,7 @@ services:
       - ecommerce-net
 
   # ─────────────────────────────────────────
-  # Frontend  (Vite dev server on port 3000)
+  # Frontend  (Nginx on port 3000)
   # ─────────────────────────────────────────
   frontend:
     build:
