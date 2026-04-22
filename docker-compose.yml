@@ -11,9 +11,6 @@ volumes:
 
 services:
 
-  # ─────────────────────────────────────────
-  # auth-db  — dedicated MongoDB for auth-service
-  # ─────────────────────────────────────────
   auth-db:
     image: mongo:7
     container_name: auth-db
@@ -28,9 +25,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # ─────────────────────────────────────────
-  # product-db  — dedicated MongoDB for product-service
-  # ─────────────────────────────────────────
   product-db:
     image: mongo:7
     container_name: product-db
@@ -45,9 +39,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # ─────────────────────────────────────────
-  # order-db  — dedicated MongoDB for order-service
-  # ─────────────────────────────────────────
   order-db:
     image: mongo:7
     container_name: order-db
@@ -62,9 +53,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # ─────────────────────────────────────────
-  # Auth Service  (port 8001)
-  # ─────────────────────────────────────────
   auth-service:
     build:
       context: ./auth-service
@@ -75,8 +63,8 @@ services:
       - "8001:8001"
     environment:
       PORT: 8001
-      AUTH_MONGO_URI: mongodb://auth-db:27017/authdb
-      JWT_SECRET: supersecretjwtkey_change_in_production
+      AUTH_MONGO_URI: ${AUTH_MONGO_URI}
+      JWT_SECRET: ${JWT_SECRET}
       NODE_ENV: development
     depends_on:
       auth-db:
@@ -84,9 +72,6 @@ services:
     networks:
       - ecommerce-net
 
-  # ─────────────────────────────────────────
-  # Product Service  (port 8002)
-  # ─────────────────────────────────────────
   product-service:
     build:
       context: ./product-service
@@ -97,7 +82,7 @@ services:
       - "8002:8002"
     environment:
       PORT: 8002
-      PRODUCT_MONGO_URI: mongodb://product-db:27017/productdb
+      PRODUCT_MONGO_URI: ${PRODUCT_MONGO_URI}
       NODE_ENV: development
     depends_on:
       product-db:
@@ -105,9 +90,6 @@ services:
     networks:
       - ecommerce-net
 
-  # ─────────────────────────────────────────
-  # Order Service  (port 8003)
-  # ─────────────────────────────────────────
   order-service:
     build:
       context: ./order-service
@@ -118,8 +100,8 @@ services:
       - "8003:8003"
     environment:
       PORT: 8003
-      ORDER_MONGO_URI: mongodb://order-db:27017/orderdb
-      JWT_SECRET: supersecretjwtkey_change_in_production
+      ORDER_MONGO_URI: ${ORDER_MONGO_URI}
+      JWT_SECRET: ${JWT_SECRET}
       NOTIFICATION_SERVICE_HOST: notification-service
       NOTIFICATION_SERVICE_PORT: 8004
       NODE_ENV: development
@@ -131,9 +113,6 @@ services:
     networks:
       - ecommerce-net
 
-  # ─────────────────────────────────────────
-  # Notification Service  (port 8004)
-  # ─────────────────────────────────────────
   notification-service:
     build:
       context: ./notification-service
@@ -144,14 +123,11 @@ services:
       - "8004:8004"
     environment:
       PORT: 8004
-      EMAIL_USER: ${EMAIL_USER:-}
-      EMAIL_PASS: ${EMAIL_PASS:-}
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PASS: ${EMAIL_PASS}
     networks:
       - ecommerce-net
 
-  # ─────────────────────────────────────────
-  # Frontend  (Nginx on port 3000)
-  # ─────────────────────────────────────────
   frontend:
     build:
       context: ./frontend
@@ -161,9 +137,9 @@ services:
     ports:
       - "3000:3000"
     environment:
-      VITE_AUTH_SERVICE_URL: http://localhost:8001
-      VITE_PRODUCT_SERVICE_URL: http://localhost:8002
-      VITE_ORDER_SERVICE_URL: http://localhost:8003
+      VITE_AUTH_SERVICE_URL: ${VITE_AUTH_SERVICE_URL}
+      VITE_PRODUCT_SERVICE_URL: ${VITE_PRODUCT_SERVICE_URL}
+      VITE_ORDER_SERVICE_URL: ${VITE_ORDER_SERVICE_URL}
     depends_on:
       - auth-service
       - product-service
