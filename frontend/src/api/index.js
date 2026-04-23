@@ -1,13 +1,14 @@
 import axios from "axios";
 
-const AUTH_URL = import.meta.env.VITE_AUTH_SERVICE_URL || "http://localhost:8001";
-const PRODUCT_URL = import.meta.env.VITE_PRODUCT_SERVICE_URL || "http://localhost:8002";
-const ORDER_URL = import.meta.env.VITE_ORDER_SERVICE_URL || "http://localhost:8003";
+// All API calls use relative URLs so they are proxied by Nginx to the
+// appropriate backend services. No IP addresses or hostnames are baked
+// into the Vite build output — the frontend image is fully reusable
+// across environments without rebuilding.
 
 // ─────────────────────────────────────────
-// Auth API
+// Auth API  →  Nginx proxies /api/auth/* → auth-service
 // ─────────────────────────────────────────
-export const authApi = axios.create({ baseURL: `${AUTH_URL}/api/auth` });
+export const authApi = axios.create({ baseURL: "/api/auth" });
 
 export const registerUser = (data) => authApi.post("/register", data);
 export const loginUser = (data) => authApi.post("/login", data);
@@ -15,17 +16,17 @@ export const getMe = (token) =>
   authApi.get("/me", { headers: { Authorization: `Bearer ${token}` } });
 
 // ─────────────────────────────────────────
-// Product API
+// Product API  →  Nginx proxies /api/products/* → product-service
 // ─────────────────────────────────────────
-export const productApi = axios.create({ baseURL: `${PRODUCT_URL}/api/products` });
+export const productApi = axios.create({ baseURL: "/api/products" });
 
 export const getProducts = (params) => productApi.get("/", { params });
 export const getProduct = (id) => productApi.get(`/${id}`);
 
 // ─────────────────────────────────────────
-// Order API
+// Order API  →  Nginx proxies /api/orders/* → order-service
 // ─────────────────────────────────────────
-export const orderApi = axios.create({ baseURL: `${ORDER_URL}/api/orders` });
+export const orderApi = axios.create({ baseURL: "/api/orders" });
 
 const authHeader = (token) => ({ headers: { Authorization: `Bearer ${token}` } });
 

@@ -118,8 +118,11 @@ services:
       - ecommerce-net
 
   # ─────────────────────────────────────────
-  # Frontend  (Vite dev server on port 3000)
+  # Frontend  (Nginx on port 3000, reverse-proxies /api/* to backend services)
   # ─────────────────────────────────────────
+  # Backend hostnames are injected at container STARTUP via envsubst —
+  # no rebuild required when service addresses change. Just update the
+  # env vars below and restart this container.
   frontend:
     build:
       context: ./frontend
@@ -129,9 +132,14 @@ services:
     ports:
       - "3000:3000"
     environment:
-      VITE_AUTH_SERVICE_URL: http://localhost:8001
-      VITE_PRODUCT_SERVICE_URL: http://localhost:8002
-      VITE_ORDER_SERVICE_URL: http://localhost:8003
+      # Docker Compose service DNS names — these match the service names
+      # defined above and are resolved inside the ecommerce-net bridge network.
+      AUTH_SERVICE_HOST: auth-service
+      AUTH_SERVICE_PORT: 8001
+      PRODUCT_SERVICE_HOST: product-service
+      PRODUCT_SERVICE_PORT: 8002
+      ORDER_SERVICE_HOST: order-service
+      ORDER_SERVICE_PORT: 8003
     depends_on:
       - auth-service
       - product-service
