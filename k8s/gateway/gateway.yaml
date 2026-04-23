@@ -1,0 +1,151 @@
+# =============================================================================
+# KGateway — Gateway API Resources
+#
+# Prerequisites: Install Envoy Gateway Controller
+#   kubectl apply -f https://github.com/envoyproxy/gateway/releases/download/v1.2.0/install.yaml
+#
+# These resources use the stable Gateway API v1 (promoted in k8s 1.28+)
+# =============================================================================
+
+# GatewayClass — Declares the Envoy Gateway implementation
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: envoy-gateway
+  labels:
+    app.kubernetes.io/name: shopnova
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+---
+# Gateway — The actual entry point (L7 load balancer)
+# Designed for HAProxy to front this Gateway in the later phase
+# HAProxy will forward traffic to the LoadBalancer IP of the envoy-gateway Service
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: shopnova-gateway
+  namespace: ecommerce-dev
+  labels:
+    app.kubernetes.io/name: shopnova
+    app.kubernetes.io/component: gateway
+    # Label for HAProxy targeting in later phase
+    shopnova.io/haproxy-target: "true"
+spec:
+  gatewayClassName: envoy-gateway
+  listeners:
+    - name: http
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: Same
+---
+# HTTPRoute — Frontend (catch-all route, lowest priority)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: frontend-route
+  namespace: ecommerce-dev
+  labels:
+    app.kubernetes.io/name: shopnova
+    app.kubernetes.io/component: frontend
+spec:
+  parentRefs:
+    - name: shopnova-gateway
+      namespace: ecommerce-dev
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: frontend-service
+          port: 8080
+---
+# HTTPRoute — Auth Service
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: auth-route
+  namespace: ecommerce-dev
+  labels:
+    app.kubernetes.io/name: shopnova
+    app.kubernetes.io/component: auth-service
+spec:
+  parentRefs:
+    - name: shopnova-gateway
+      namespace: ecommerce-dev
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /auth
+      backendRefs:
+        - name: auth-service
+          port: 8001
+---
+# HTTPRoute — Product Service
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: products-route
+  namespace: ecommerce-dev
+  labels:
+    app.kubernetes.io/name: shopnova
+    app.kubernetes.io/component: product-service
+spec:
+  parentRefs:
+    - name: shopnova-gateway
+      namespace: ecommerce-dev
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /products
+      backendRefs:
+        - name: product-service
+          port: 8002
+---
+# HTTPRoute — Order Service
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: orders-route
+  namespace: ecommerce-dev
+  labels:
+    app.kubernetes.io/name: shopnova
+    app.kubernetes.io/component: order-service
+spec:
+  parentRefs:
+    - name: shopnova-gateway
+      namespace: ecommerce-dev
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /orders
+      backendRefs:
+        - name: order-service
+          port: 8003
+---
+# HTTPRoute — Notification Service
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: notifications-route
+  namespace: ecommerce-dev
+  labels:
+    app.kubernetes.io/name: shopnova
+    app.kubernetes.io/component: notification-service
+spec:
+  parentRefs:
+    - name: shopnova-gateway
+      namespace: ecommerce-dev
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /notifications
+      backendRefs:
+        - name: notification-service
+          port: 8004

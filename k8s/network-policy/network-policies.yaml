@@ -1,0 +1,203 @@
+# =============================================================================
+# NetworkPolicy — Default Deny All Ingress + Egress
+# Applied to both namespaces for zero-trust baseline.
+# Explicit allow rules in separate files selectively open needed traffic.
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: ecommerce-dev
+  labels:
+    app.kubernetes.io/name: shopnova
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector: {}  # Applies to ALL pods in this namespace
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# =============================================================================
+# NetworkPolicy — Allow frontend → backend services (ingress to backends)
+# Frontend pods can send requests to all 4 backend services
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-to-backend
+  namespace: ecommerce-dev
+  labels:
+    app.kubernetes.io/name: shopnova
+    app.kubernetes.io/component: network-policy
+spec:
+  # This policy ALLOWS INGRESS into backend pods FROM frontend pods
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+          - auth-service
+          - product-service
+          - order-service
+          - notification-service
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: frontend
+      ports:
+        - port: 8001
+          protocol: TCP
+        - port: 8002
+          protocol: TCP
+        - port: 8003
+          protocol: TCP
+        - port: 8004
+          protocol: TCP
+---
+# =============================================================================
+# NetworkPolicy — Allow KGateway Envoy pods → all services
+# Envoy pods are in envoy-gateway-system namespace, need cross-ns access
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-gateway-to-services
+  namespace: ecommerce-dev
+  labels:
+    app.kubernetes.io/name: shopnova
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+          - frontend
+          - auth-service
+          - product-service
+          - order-service
+          - notification-service
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: envoy-gateway-system
+---
+# =============================================================================
+# NetworkPolicy — Allow backend → MongoDB (egress from backends to DBs)
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backend-to-db
+  namespace: ecommerce-dev
+  labels:
+    app.kubernetes.io/name: shopnova
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+          - auth-service
+          - product-service
+          - order-service
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - auth-db
+                  - product-db
+                  - order-db
+      ports:
+        - port: 27017
+          protocol: TCP
+    # Allow DNS resolution (CoreDNS runs in kube-system on UDP 53)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+---
+# =============================================================================
+# NetworkPolicy — Allow order-service → notification-service egress
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-order-to-notification
+  namespace: ecommerce-dev
+  labels:
+    app.kubernetes.io/name: shopnova
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: order-service
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: notification-service
+      ports:
+        - port: 8004
+          protocol: TCP
+    # DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - port: 53
+          protocol: UDP
+---
+# =============================================================================
+# NetworkPolicy — Allow notification-service egress to internet (Gmail SMTP)
+# Gmail SMTP uses port 587 (STARTTLS) and 465 (SSL)
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-notification-smtp-egress
+  namespace: ecommerce-dev
+  labels:
+    app.kubernetes.io/name: shopnova
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: notification-service
+  policyTypes:
+    - Egress
+  egress:
+    # Allow SMTP outbound (Gmail)
+    - ports:
+        - port: 587
+          protocol: TCP
+        - port: 465
+          protocol: TCP
+    # DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - port: 53
+          protocol: UDP

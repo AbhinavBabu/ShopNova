@@ -1,0 +1,28 @@
+apiVersion: v2
+name: ecommerce-platform
+description: >
+  ShopNova — Production-grade Helm chart for a microservices e-commerce platform.
+  Includes frontend (React/Nginx), 4 Node.js backend services, 3 MongoDB StatefulSets,
+  KGateway (Envoy Gateway) with HTTPRoutes, NetworkPolicies, and HPAs.
+
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - ecommerce
+  - microservices
+  - nodejs
+  - mongodb
+  - envoy-gateway
+
+home: https://github.com/your-org/shopnova
+maintainers:
+  - name: ShopNova DevOps Team
+    email: devops@shopnova.io
+
+dependencies: []
+
+annotations:
+  category: E-Commerce Platform
+  licenses: MIT

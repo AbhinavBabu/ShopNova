@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shopnova-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ecommerce.labels" . | nindent 4 }}
+    app.kubernetes.io/component: config
+data:
+  NODE_ENV: "production"
+
+  AUTH_MONGO_URI: {{ include "ecommerce.mongoURI" (dict "dbService" "auth-db" "dbName" "authdb" "namespace" .Release.Namespace) | quote }}
+  PRODUCT_MONGO_URI: {{ include "ecommerce.mongoURI" (dict "dbService" "product-db" "dbName" "productdb" "namespace" .Release.Namespace) | quote }}
+  ORDER_MONGO_URI: {{ include "ecommerce.mongoURI" (dict "dbService" "order-db" "dbName" "orderdb" "namespace" .Release.Namespace) | quote }}
+
+  NOTIFICATION_SERVICE_HOST: {{ printf "notification-service.%s.svc.cluster.local" .Release.Namespace | quote }}
+  NOTIFICATION_SERVICE_PORT: {{ .Values.notificationService.service.port | quote }}
+
+  AUTH_SERVICE_PORT: {{ .Values.authService.service.port | quote }}
+  PRODUCT_SERVICE_PORT: {{ .Values.productService.service.port | quote }}
+  ORDER_SERVICE_PORT: {{ .Values.orderService.service.port | quote }}

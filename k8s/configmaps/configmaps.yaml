@@ -1,0 +1,55 @@
+# =============================================================================
+# ShopNova ConfigMaps — ecommerce-dev namespace
+# Non-sensitive configuration only. Secrets go in Secret resources.
+# MongoDB URIs use internal Kubernetes DNS (ClusterIP service names).
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shopnova-config
+  namespace: ecommerce-dev
+  labels:
+    app.kubernetes.io/name: shopnova
+    app.kubernetes.io/component: config
+data:
+  NODE_ENV: "production"
+
+  # MongoDB ClusterIP service DNS (internal cluster DNS)
+  # Format: mongodb://<service-name>.<namespace>.svc.cluster.local:27017/<dbname>
+  AUTH_MONGO_URI: "mongodb://auth-db.ecommerce-dev.svc.cluster.local:27017/authdb"
+  PRODUCT_MONGO_URI: "mongodb://product-db.ecommerce-dev.svc.cluster.local:27017/productdb"
+  ORDER_MONGO_URI: "mongodb://order-db.ecommerce-dev.svc.cluster.local:27017/orderdb"
+
+  # Inter-service communication (internal cluster DNS)
+  NOTIFICATION_SERVICE_HOST: "notification-service.ecommerce-dev.svc.cluster.local"
+  NOTIFICATION_SERVICE_PORT: "8004"
+
+  # Service ports
+  AUTH_SERVICE_PORT: "8001"
+  PRODUCT_SERVICE_PORT: "8002"
+  ORDER_SERVICE_PORT: "8003"
+---
+# =============================================================================
+# ShopNova ConfigMaps — ecommerce-prod namespace
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shopnova-config
+  namespace: ecommerce-prod
+  labels:
+    app.kubernetes.io/name: shopnova
+    app.kubernetes.io/component: config
+data:
+  NODE_ENV: "production"
+
+  AUTH_MONGO_URI: "mongodb://auth-db.ecommerce-prod.svc.cluster.local:27017/authdb"
+  PRODUCT_MONGO_URI: "mongodb://product-db.ecommerce-prod.svc.cluster.local:27017/productdb"
+  ORDER_MONGO_URI: "mongodb://order-db.ecommerce-prod.svc.cluster.local:27017/orderdb"
+
+  NOTIFICATION_SERVICE_HOST: "notification-service.ecommerce-prod.svc.cluster.local"
+  NOTIFICATION_SERVICE_PORT: "8004"
+
+  AUTH_SERVICE_PORT: "8001"
+  PRODUCT_SERVICE_PORT: "8002"
+  ORDER_SERVICE_PORT: "8003"

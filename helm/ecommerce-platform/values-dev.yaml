@@ -1,0 +1,53 @@
+# =============================================================================
+# values-dev.yaml — Development Environment Overrides
+# Usage: helm install shopnova-dev ./helm/ecommerce-platform \
+#          -f helm/ecommerce-platform/values-dev.yaml \
+#          --namespace ecommerce-dev --create-namespace
+# =============================================================================
+
+global:
+  environment: "dev"
+  storageClass: "standard"  # minikube/kind
+
+# Reduced replicas for dev to save resources
+frontend:
+  replicaCount: 1
+  image:
+    tag: "latest"      # Use latest tag in dev for rapid iteration
+
+authService:
+  replicaCount: 1
+  image:
+    tag: "latest"
+
+productService:
+  replicaCount: 1
+  image:
+    tag: "latest"
+
+orderService:
+  replicaCount: 1
+  image:
+    tag: "latest"
+
+notificationService:
+  replicaCount: 1
+  image:
+    tag: "latest"
+
+# Smaller PVC sizes for dev
+mongodb:
+  storage:
+    authDb:
+      size: "1Gi"
+    productDb:
+      size: "1Gi"
+    orderDb:
+      size: "1Gi"
+
+# HPAs disabled in dev (metrics-server may not be running)
+hpa:
+  frontend:
+    enabled: false
+  authService:
+    enabled: false

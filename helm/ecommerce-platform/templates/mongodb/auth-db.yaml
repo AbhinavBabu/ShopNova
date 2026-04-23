@@ -1,0 +1,104 @@
+# auth-db Headless Service (StatefulSet serviceName)
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-db-headless
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ecommerce.labels" . | nindent 4 }}
+    app.kubernetes.io/component: auth-db
+spec:
+  clusterIP: None
+  selector:
+    {{- include "ecommerce.selectorLabels" (dict "component" "auth-db") | nindent 4 }}
+  ports:
+    - port: 27017
+      targetPort: 27017
+      name: mongo
+---
+# auth-db ClusterIP Service (for application connections)
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-db
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ecommerce.labels" . | nindent 4 }}
+    app.kubernetes.io/component: auth-db
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "ecommerce.selectorLabels" (dict "component" "auth-db") | nindent 4 }}
+  ports:
+    - port: 27017
+      targetPort: 27017
+      name: mongo
+---
+# auth-db StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: auth-db
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ecommerce.labels" . | nindent 4 }}
+    app.kubernetes.io/component: auth-db
+spec:
+  serviceName: auth-db-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "ecommerce.selectorLabels" (dict "component" "auth-db") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ecommerce.selectorLabels" (dict "component" "auth-db") | nindent 8 }}
+        {{- include "ecommerce.labels" . | nindent 8 }}
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        fsGroup: 999
+      containers:
+        - name: mongodb
+          image: {{ printf "%s:%s" .Values.mongodb.image.repository .Values.mongodb.image.tag | quote }}
+          imagePullPolicy: {{ .Values.mongodb.image.pullPolicy }}
+          ports:
+            - containerPort: 27017
+              name: mongo
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            {{- toYaml .Values.mongodb.resources | nindent 12 }}
+          volumeMounts:
+            - name: auth-db-data
+              mountPath: /data/db
+          readinessProbe:
+            exec:
+              command: ["mongosh", "--eval", "db.adminCommand('ping')"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command: ["mongosh", "--eval", "db.adminCommand('ping')"]
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+  volumeClaimTemplates:
+    - metadata:
+        name: auth-db-data
+        labels:
+          {{- include "ecommerce.labels" . | nindent 10 }}
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: {{ .Values.global.storageClass | quote }}
+        resources:
+          requests:
+            storage: {{ .Values.mongodb.storage.authDb.size | quote }}

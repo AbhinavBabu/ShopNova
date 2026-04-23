@@ -1,0 +1,21 @@
+# =============================================================================
+# ShopNova Namespaces
+# Two namespaces: dev (feature branches) and prod (main branch)
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ecommerce-dev
+  labels:
+    app.kubernetes.io/name: shopnova
+    app.kubernetes.io/managed-by: helm
+    environment: dev
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ecommerce-prod
+  labels:
+    app.kubernetes.io/name: shopnova
+    app.kubernetes.io/managed-by: helm
+    environment: prod

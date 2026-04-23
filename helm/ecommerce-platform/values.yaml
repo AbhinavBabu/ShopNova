@@ -1,0 +1,186 @@
+# =============================================================================
+# ShopNova Helm Chart — Base Values
+# Override with: -f values-dev.yaml or -f values-prod.yaml
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Global settings shared across all templates
+# ---------------------------------------------------------------------------
+global:
+  # Image registry prefix. Update to your registry:
+  #   Docker Hub:  docker.io/yourusername
+  #   GHCR:        ghcr.io/yourorg
+  #   Local/minikube: shopnova (no registry prefix needed)
+  imageRegistry: "shopnova"
+  imagePullPolicy: IfNotPresent
+  # imagePullSecrets: []  # Uncomment for private registries
+
+  # Target namespace — injected by Helm at install time via --namespace flag
+  # Set via: helm install ... --namespace ecommerce-dev --create-namespace
+
+  # Storage class for MongoDB PVCs
+  # minikube/kind: standard  |  EKS: gp2  |  GKE: pd-standard  |  AKS: default
+  storageClass: "standard"
+
+  environment: "dev"
+
+# ---------------------------------------------------------------------------
+# Frontend — React/Vite/Nginx (non-root nginx UID 101, port 8080)
+# ---------------------------------------------------------------------------
+frontend:
+  replicaCount: 2
+  image:
+    repository: frontend
+    tag: "1.0.0"
+  service:
+    type: ClusterIP
+    port: 8080
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# ---------------------------------------------------------------------------
+# Auth Service — Node.js JWT authentication (non-root UID 1001, port 8001)
+# ---------------------------------------------------------------------------
+authService:
+  replicaCount: 2
+  image:
+    repository: auth-service
+    tag: "1.0.0"
+  service:
+    type: ClusterIP
+    port: 8001
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+
+# ---------------------------------------------------------------------------
+# Product Service — Node.js product catalog (non-root UID 1001, port 8002)
+# ---------------------------------------------------------------------------
+productService:
+  replicaCount: 2
+  image:
+    repository: product-service
+    tag: "1.0.0"
+  service:
+    type: ClusterIP
+    port: 8002
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+
+# ---------------------------------------------------------------------------
+# Order Service — Node.js orders (non-root UID 1001, port 8003)
+# ---------------------------------------------------------------------------
+orderService:
+  replicaCount: 2
+  image:
+    repository: order-service
+    tag: "1.0.0"
+  service:
+    type: ClusterIP
+    port: 8003
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+
+# ---------------------------------------------------------------------------
+# Notification Service — Gmail SMTP email (non-root UID 1001, port 8004)
+# ---------------------------------------------------------------------------
+notificationService:
+  replicaCount: 1
+  image:
+    repository: notification-service
+    tag: "1.0.0"
+  service:
+    type: ClusterIP
+    port: 8004
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# ---------------------------------------------------------------------------
+# MongoDB StatefulSets (separate DB per service — database-per-service pattern)
+# ---------------------------------------------------------------------------
+mongodb:
+  image:
+    repository: mongo
+    tag: "7"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  storage:
+    authDb:
+      size: "1Gi"
+    productDb:
+      size: "1Gi"
+    orderDb:
+      size: "1Gi"
+
+# ---------------------------------------------------------------------------
+# Secrets — REPLACE values with base64-encoded actual secrets
+# Preferred: use kubectl create secret or Sealed Secrets in production
+# ---------------------------------------------------------------------------
+secrets:
+  # echo -n "your-jwt-secret" | base64
+  jwtSecret: "eW91ci1zdXBlci1zZWNyZXQtand0LWtleS1taW4tMzItY2hhcnM="
+  # echo -n "your@gmail.com" | base64
+  emailUser: "eW91ckBnbWFpbC5jb20="
+  # echo -n "your-app-password" | base64
+  emailPass: "eW91ci1nbWFpbC1hcHAtcGFzc3dvcmQ="
+
+# ---------------------------------------------------------------------------
+# KGateway (Envoy Gateway) — Gateway API resources
+# ---------------------------------------------------------------------------
+gateway:
+  enabled: true
+  gatewayClassName: "envoy-gateway"
+  name: "shopnova-gateway"
+  listenerPort: 80
+
+# ---------------------------------------------------------------------------
+# Network Policies
+# ---------------------------------------------------------------------------
+networkPolicy:
+  enabled: true
+
+# ---------------------------------------------------------------------------
+# Horizontal Pod Autoscaler
+# ---------------------------------------------------------------------------
+hpa:
+  frontend:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  authService:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 75
