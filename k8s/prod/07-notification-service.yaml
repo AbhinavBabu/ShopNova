@@ -1,0 +1,85 @@
+# ── Notification Service Deployment ──────────────────────────────────────────
+# No HPA — this is a stateless best-effort email service, single replica is fine.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: prod
+  labels:
+    app: notification-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+      containers:
+        - name: notification-service
+          image: abhinavbabu33/shopnova-notification-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8004
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: shopnova-config
+                  key: NOTIFICATION_PORT
+            - name: EMAIL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: shopnova-secrets
+                  key: EMAIL_USER
+            - name: EMAIL_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: shopnova-secrets
+                  key: EMAIL_PASS
+          resources:
+            requests:
+              cpu: 64m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8004
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8004
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+---
+# ── Notification Service ClusterIP Service ────────────────────────────────────
+# ClusterIP only — not exposed through kgateway (internal service-to-service only)
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: prod
+  labels:
+    app: notification-service
+spec:
+  selector:
+    app: notification-service
+  ports:
+    - port: 8004
+      targetPort: 8004
+  type: ClusterIP

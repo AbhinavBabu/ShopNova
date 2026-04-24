@@ -1,0 +1,43 @@
+# ── Dev Application ConfigMap ─────────────────────────────────────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shopnova-config
+  namespace: dev
+data:
+  NODE_ENV: "development"
+  AUTH_PORT: "8001"
+  PRODUCT_PORT: "8002"
+  ORDER_PORT: "8003"
+  NOTIFICATION_PORT: "8004"
+  FRONTEND_PORT: "3000"
+  NOTIFICATION_SERVICE_HOST: "notification-service"
+  NOTIFICATION_SERVICE_PORT: "8004"
+---
+# ── Dev Nginx ConfigMap (static-only, same as prod) ───────────────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: dev
+data:
+  default.conf: |
+    server {
+        listen 3000;
+        server_name localhost;
+
+        root /usr/share/nginx/html;
+        index index.html;
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+
+        location ~* \.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+
+        gzip on;
+        gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
+    }

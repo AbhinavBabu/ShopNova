@@ -1,8 +1,11 @@
 import axios from "axios";
 
-const AUTH_URL = import.meta.env.VITE_AUTH_SERVICE_URL;
-const PRODUCT_URL = import.meta.env.VITE_PRODUCT_SERVICE_URL;
-const ORDER_URL = import.meta.env.VITE_ORDER_SERVICE_URL;
+// In Kubernetes:    VITE_* vars are undefined → AUTH_URL = "" → relative URLs
+//                   e.g. baseURL = "/api/auth" → browser hits kgateway → routes to auth-service
+// In Docker Compose: same relative URLs, nginx proxy_pass handles routing to backends
+const AUTH_URL = import.meta.env.VITE_AUTH_SERVICE_URL || "";
+const PRODUCT_URL = import.meta.env.VITE_PRODUCT_SERVICE_URL || "";
+const ORDER_URL = import.meta.env.VITE_ORDER_SERVICE_URL || "";
 
 // ─────────────────────────────────────────
 // Auth API

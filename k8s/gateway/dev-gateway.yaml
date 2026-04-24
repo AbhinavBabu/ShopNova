@@ -1,0 +1,18 @@
+# Gateway for DEV namespace
+# Patched to NodePort 30081 after applying:
+#   kubectl patch svc shopnova-gateway -n dev \
+#     -p '{"spec":{"type":"NodePort","ports":[{"port":80,"targetPort":10080,"nodePort":30081,"protocol":"TCP"}]}}'
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: shopnova-gateway
+  namespace: dev
+spec:
+  gatewayClassName: kgateway
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: Same

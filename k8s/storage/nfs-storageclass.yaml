@@ -1,0 +1,22 @@
+# StorageClass for NFS dynamic provisioning.
+# Apply this AFTER setting up your NFS server on the separate instance.
+# See k8s/DEPLOY.md for NFS provisioner install commands.
+#
+# For immediate testing (before NFS is ready), use local-path-provisioner instead:
+#   kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.26/deploy/local-path-storage.yaml
+# Then change storageClassName in MongoDB StatefulSets from "nfs-storage" → "local-path"
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-storage
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: nfs.csi.k8s.io
+parameters:
+  server: NFS_SERVER_IP       # Replace with your NFS server instance IP
+  share: /exports/shopnova    # NFS export path on your server
+reclaimPolicy: Retain
+volumeBindingMode: Immediate
+mountOptions:
+  - hard
+  - nfsvers=4.1

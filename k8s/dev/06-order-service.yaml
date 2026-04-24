@@ -1,0 +1,117 @@
+# Order Service — DEV
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+  namespace: dev
+  labels:
+    app: order-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+      containers:
+        - name: order-service
+          image: abhinavbabu33/shopnova-order-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8003
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: shopnova-config
+                  key: ORDER_PORT
+            - name: NODE_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: shopnova-config
+                  key: NODE_ENV
+            - name: ORDER_MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: shopnova-secrets
+                  key: ORDER_MONGO_URI
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: shopnova-secrets
+                  key: JWT_SECRET
+            - name: NOTIFICATION_SERVICE_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: shopnova-config
+                  key: NOTIFICATION_SERVICE_HOST
+            - name: NOTIFICATION_SERVICE_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: shopnova-config
+                  key: NOTIFICATION_SERVICE_PORT
+          resources:
+            requests:
+              cpu: 64m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8003
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8003
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+  namespace: dev
+  labels:
+    app: order-service
+spec:
+  selector:
+    app: order-service
+  ports:
+    - port: 8003
+      targetPort: 8003
+  type: ClusterIP
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: order-service-hpa
+  namespace: dev
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: order-service
+  minReplicas: 1
+  maxReplicas: 2
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

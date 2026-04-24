@@ -1,0 +1,8 @@
+# GatewayClass binds to the kgateway controller (Envoy-based)
+# Install kgateway first — see k8s/DEPLOY.md for commands
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: kgateway
+spec:
+  controllerName: kgateway.io/kgateway

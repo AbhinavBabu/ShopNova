@@ -54,6 +54,7 @@ services:
       retries: 5
 
   auth-service:
+    image: abhinavbabu33/shopnova-auth-service:latest
     build:
       context: ./auth-service
       dockerfile: Dockerfile
@@ -73,6 +74,7 @@ services:
       - ecommerce-net
 
   product-service:
+    image: abhinavbabu33/shopnova-product-service:latest
     build:
       context: ./product-service
       dockerfile: Dockerfile
@@ -91,6 +93,7 @@ services:
       - ecommerce-net
 
   order-service:
+    image: abhinavbabu33/shopnova-order-service:latest
     build:
       context: ./order-service
       dockerfile: Dockerfile
@@ -114,6 +117,7 @@ services:
       - ecommerce-net
 
   notification-service:
+    image: abhinavbabu33/shopnova-notification-service:latest
     build:
       context: ./notification-service
       dockerfile: Dockerfile
@@ -129,15 +133,11 @@ services:
       - ecommerce-net
 
   frontend:
+    image: abhinavbabu33/shopnova-frontend:latest
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      # Vite bakes env vars into the static bundle at build time,
-      # so they must be passed as build args rather than runtime env vars.
-      args:
-        VITE_AUTH_SERVICE_URL: ${VITE_AUTH_SERVICE_URL}
-        VITE_PRODUCT_SERVICE_URL: ${VITE_PRODUCT_SERVICE_URL}
-        VITE_ORDER_SERVICE_URL: ${VITE_ORDER_SERVICE_URL}
+      # No build args needed — frontend uses relative URLs, nginx.conf handles proxy
     container_name: frontend
     restart: unless-stopped
     ports:
