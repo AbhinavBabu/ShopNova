@@ -1,8 +1,8 @@
 import axios from "axios";
 
-const AUTH_URL = import.meta.env.VITE_AUTH_SERVICE_URL || "http://44.222.198.164:8001";
-const PRODUCT_URL = import.meta.env.VITE_PRODUCT_SERVICE_URL || "http://44.222.198.164:8002";
-const ORDER_URL = import.meta.env.VITE_ORDER_SERVICE_URL || "http://44.222.198.164:8003";
+const AUTH_URL = import.meta.env.VITE_AUTH_SERVICE_URL;
+const PRODUCT_URL = import.meta.env.VITE_PRODUCT_SERVICE_URL;
+const ORDER_URL = import.meta.env.VITE_ORDER_SERVICE_URL;
 
 // ─────────────────────────────────────────
 // Auth API
