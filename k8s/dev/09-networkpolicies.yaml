@@ -1,5 +1,12 @@
-# NetworkPolicies — DEV namespace (identical logic to prod)
+# ─────────────────────────────────────────────────────────────────────────────
+# NetworkPolicies — DEV namespace (CORRECTED)
+# Root causes fixed (identical to prod fix):
+#   1. Gateway Envoy pod lives in DEV namespace, NOT kgateway-system
+#   2. Gateway pod needs EGRESS to services AND to kgateway-system (xDS port 9977)
+#   3. Services need INGRESS from the gateway pod (which is in dev namespace)
+# ─────────────────────────────────────────────────────────────────────────────
 
+# ── 1. Default Deny All ──────────────────────────────────────────────────────
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -11,6 +18,7 @@ spec:
     - Ingress
     - Egress
 ---
+# ── 2. Allow DNS egress for ALL pods ────────────────────────────────────────
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -31,6 +39,69 @@ spec:
         - port: 53
           protocol: TCP
 ---
+# ── 3. Gateway Pod: Allow ingress from NodePort (external traffic) ───────────
+# Envoy receives traffic on its listener port from the host network (NodePort)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-external-to-gateway
+  namespace: dev
+spec:
+  podSelector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: shopnova-gateway
+  policyTypes:
+    - Ingress
+  ingress:
+    - {}   # Allow from all sources (NodePort traffic arrives from node IP)
+---
+# ── 4. Gateway Pod: Allow egress to backend services in dev namespace ─────────
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-gateway-egress-to-services
+  namespace: dev
+spec:
+  podSelector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: shopnova-gateway
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector: {}   # All pods in dev namespace
+      ports:
+        - port: 3000   # frontend
+        - port: 8001   # auth-service
+        - port: 8002   # product-service
+        - port: 8003   # order-service
+---
+# ── 5. Gateway Pod: Allow egress to kgateway-system for xDS control plane ─────
+# KEY FIX: Envoy needs this gRPC stream to receive its routing configuration.
+# Without this, xDS times out and Envoy cannot forward ANY traffic.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-gateway-egress-to-controlplane
+  namespace: dev
+spec:
+  podSelector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: shopnova-gateway
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kgateway-system
+      ports:
+        - port: 9977   # xDS gRPC control plane port
+        - port: 9988   # kgateway metrics/status port
+---
+# ── 6. frontend: Allow ingress FROM gateway pod IN dev namespace ──────────────
+# BUG WAS HERE: Old policy used namespaceSelector: kgateway-system
+# FIXED: Gateway Envoy pod is in DEV namespace, so we use podSelector
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -44,12 +115,13 @@ spec:
     - Ingress
   ingress:
     - from:
-        - namespaceSelector:
+        - podSelector:
             matchLabels:
-              kubernetes.io/metadata.name: kgateway-system
+              gateway.networking.k8s.io/gateway-name: shopnova-gateway
       ports:
         - port: 3000
 ---
+# ── 7. auth-service: Allow ingress FROM gateway pod in dev namespace ──────────
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -63,12 +135,13 @@ spec:
     - Ingress
   ingress:
     - from:
-        - namespaceSelector:
+        - podSelector:
             matchLabels:
-              kubernetes.io/metadata.name: kgateway-system
+              gateway.networking.k8s.io/gateway-name: shopnova-gateway
       ports:
         - port: 8001
 ---
+# ── 8. product-service: Allow ingress FROM gateway pod in dev namespace ───────
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -82,12 +155,13 @@ spec:
     - Ingress
   ingress:
     - from:
-        - namespaceSelector:
+        - podSelector:
             matchLabels:
-              kubernetes.io/metadata.name: kgateway-system
+              gateway.networking.k8s.io/gateway-name: shopnova-gateway
       ports:
         - port: 8002
 ---
+# ── 9. order-service: Allow ingress FROM gateway pod in dev namespace ─────────
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -101,12 +175,13 @@ spec:
     - Ingress
   ingress:
     - from:
-        - namespaceSelector:
+        - podSelector:
             matchLabels:
-              kubernetes.io/metadata.name: kgateway-system
+              gateway.networking.k8s.io/gateway-name: shopnova-gateway
       ports:
         - port: 8003
 ---
+# ── 10. order-service → notification-service (internal) ──────────────────────
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -126,6 +201,7 @@ spec:
       ports:
         - port: 8004
 ---
+# ── 11. auth-db: Allow ingress from auth-service ──────────────────────────────
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -145,6 +221,7 @@ spec:
       ports:
         - port: 27017
 ---
+# ── 12. product-db: Allow ingress from product-service ───────────────────────
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -164,6 +241,7 @@ spec:
       ports:
         - port: 27017
 ---
+# ── 13. order-db: Allow ingress from order-service ───────────────────────────
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -183,6 +261,7 @@ spec:
       ports:
         - port: 27017
 ---
+# ── 14. Egress: auth-service → auth-db ───────────────────────────────────────
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -202,6 +281,7 @@ spec:
       ports:
         - port: 27017
 ---
+# ── 15. Egress: product-service → product-db ─────────────────────────────────
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -221,6 +301,7 @@ spec:
       ports:
         - port: 27017
 ---
+# ── 16. Egress: order-service → order-db + notification-service ──────────────
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -246,6 +327,7 @@ spec:
       ports:
         - port: 8004
 ---
+# ── 17. Egress: notification-service → internet (Gmail SMTP) ─────────────────
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -258,4 +340,5 @@ spec:
   policyTypes:
     - Egress
   egress:
-    - {}
+    - {}   # Allow all egress — Gmail SMTP requires open internet access
+

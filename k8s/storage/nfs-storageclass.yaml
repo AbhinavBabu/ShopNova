@@ -9,14 +9,7 @@ apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: nfs-storage
-  annotations:
-    storageclass.kubernetes.io/is-default-class: "true"
-provisioner: nfs.csi.k8s.io
-parameters:
-  server: NFS_SERVER_IP       # Replace with your NFS server instance IP
-  share: /exports/shopnova    # NFS export path on your server
-reclaimPolicy: Retain
+provisioner: cluster.local/dev-nfs-provisioner-nfs-subdir-external-provisioner
+reclaimPolicy: Delete
 volumeBindingMode: Immediate
-mountOptions:
-  - hard
-  - nfsvers=4.1
+allowVolumeExpansion: true

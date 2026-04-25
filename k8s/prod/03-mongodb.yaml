@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # MongoDB StatefulSets + Headless Services — PROD namespace
 # Each microservice gets its own isolated MongoDB instance.
-# storageClassName: local-path  ← for immediate testing with local-path-provisioner
+# storageClassName: nfs-storage  ← for immediate testing with local-path-provisioner
 # When NFS is ready: change to  storageClassName: nfs-storage
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -84,7 +84,7 @@ spec:
         name: mongo-data
       spec:
         accessModes: ["ReadWriteOnce"]
-        storageClassName: local-path
+        storageClassName: nfs-storage
         resources:
           requests:
             storage: 1Gi
@@ -168,7 +168,7 @@ spec:
         name: mongo-data
       spec:
         accessModes: ["ReadWriteOnce"]
-        storageClassName: local-path
+        storageClassName: nfs-storage
         resources:
           requests:
             storage: 1Gi
@@ -252,7 +252,7 @@ spec:
         name: mongo-data
       spec:
         accessModes: ["ReadWriteOnce"]
-        storageClassName: local-path
+        storageClassName: nfs-storage
         resources:
           requests:
             storage: 1Gi
